@@ -1,11 +1,13 @@
-from typing import Callable, Dict, Iterable, List
+from typing import List
 from django.test import TestCase, Client
 from django.core.paginator import Page
 from django.contrib.auth import get_user_model
 from ..models import Post, Group
 from django.urls import reverse
 from django import forms
-from .utils import check_responses_with_dict_of_urls, check_template
+from .utils import (check_responses_of_given_urls,
+                    check_template,
+                    check_posts_fields)
 User = get_user_model()
 
 
@@ -63,7 +65,7 @@ class PostsPagesTests(TestCase):
                     )
                     cls.tests_posts.append(new_post)
 
-    def test_templates(self):
+    def test_namespace_and_templates(self):
         templates_pages_names = {
             reverse('posts:index'): 'posts/index.html',
 
@@ -86,10 +88,10 @@ class PostsPagesTests(TestCase):
             reverse('posts:post_create'): 'posts/create_post.html',
         }
 
-        check_responses_with_dict_of_urls(self,
-                                          PostsPagesTests.auth_client,
-                                          check_template,
-                                          templates_pages_names)
+        check_responses_of_given_urls(self,
+                                      PostsPagesTests.auth_client,
+                                      check_template,
+                                      templates_pages_names)
 
     def test_create_edit_post_context(self):
         test_urls = [
@@ -115,34 +117,15 @@ class PostsPagesTests(TestCase):
                             field,
                             expected_field_type)
 
-    def check_posts_fields(self,
-                           posts_from_page: Iterable,
-                           expected_posts: Iterable):
-        posts_attributes = [
-            "text",
-            "group",
-            "pub_date",
-            "author"
-        ]
-        self.assertEquals(len(posts_from_page), len(expected_posts))
-        for post_from_page, expected_post in zip(posts_from_page,
-                                                 expected_posts):
-            with self.subTest(post_from_page=post_from_page,
-                              expected_post=expected_post):
-                for attribute in posts_attributes:
-                    with self.subTest(attribute=attribute):
-                        self.assertEquals(
-                            post_from_page.__getattribute__(attribute),
-                            expected_post.__getattribute__(attribute))
-
     def test_post_detail_context(self):
         response = PostsPagesTests.auth_client.get(
             reverse(
                 "posts:post_detail",
                 kwargs={"post_id": PostsPagesTests.test_post.id}))
- 
-        self.check_posts_fields([response.context.get("post")],
-                                [PostsPagesTests.test_post])
+
+        check_posts_fields(self,
+                           [response.context.get("post")],
+                           [PostsPagesTests.test_post])
 
     def test_index_page_context_and_paginator(self):
         POSTS_PER_PAGE = 10
@@ -150,7 +133,7 @@ class PostsPagesTests(TestCase):
         posts_from_page = response.context.get("page_obj")
         database_posts = Post.objects.all()[:POSTS_PER_PAGE]
 
-        self.check_posts_fields(posts_from_page, database_posts)
+        check_posts_fields(self, posts_from_page, database_posts)
 
     def test_profile_page_context_and_paginator(self):
         POSTS_PER_PAGE = 10
@@ -165,7 +148,7 @@ class PostsPagesTests(TestCase):
                                        .objects
                                        .filter(author=author)
                                        [:POSTS_PER_PAGE])
-                self.check_posts_fields(posts_from_page, posts_from_database)
+                check_posts_fields(self, posts_from_page, posts_from_database)
 
     def test_group_page_context_and_paginator(self):
         POSTS_PER_PAGE = 10
@@ -180,7 +163,7 @@ class PostsPagesTests(TestCase):
                                        .objects
                                        .filter(group=group)
                                        [:POSTS_PER_PAGE])
-                self.check_posts_fields(posts_from_page, posts_from_database)
+                check_posts_fields(self, posts_from_page, posts_from_database)
 
     def check_page_contains_post_on_first_position(self,
                                                    posts: List,
