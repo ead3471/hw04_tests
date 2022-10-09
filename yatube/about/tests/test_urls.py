@@ -1,5 +1,8 @@
 from django.test import TestCase, Client
 from http import HTTPStatus
+from test_utils.utils import (check_responses_of_given_urls,
+                              check_status_code,
+                              check_template)
 
 
 class AboutUrlsTest(TestCase):
@@ -14,10 +17,10 @@ class AboutUrlsTest(TestCase):
             '/about/tech/': HTTPStatus.OK
         }
 
-        for url, status in urls_for_check.items():
-            with self.subTest(url=url, status=status):
-                responce = AboutUrlsTest.guest_client.get(url)
-                self.assertEquals(responce.status_code, status)
+        check_responses_of_given_urls(self,
+                                      AboutUrlsTest.guest_client,
+                                      check_status_code,
+                                      urls_for_check)
 
     def test_templates(self):
         urls_for_check = {
@@ -25,7 +28,7 @@ class AboutUrlsTest(TestCase):
             '/about/tech/': 'about/tech.html'
         }
 
-        for url, template in urls_for_check.items():
-            with self.subTest(url=url, status=template):
-                responce = AboutUrlsTest.guest_client.get(url)
-                self.assertTemplateUsed(responce, template)
+        check_responses_of_given_urls(self,
+                                      AboutUrlsTest.guest_client,
+                                      check_template,
+                                      urls_for_check)

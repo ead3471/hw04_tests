@@ -1,6 +1,9 @@
 from http import HTTPStatus
 from django.test import Client, TestCase
 from django.urls import reverse
+from test_utils.utils import (check_responses_of_given_urls,
+                              check_status_code,
+                              check_template)
 
 
 class AboutViewsTests(TestCase):
@@ -8,15 +11,15 @@ class AboutViewsTests(TestCase):
         self.guest_client = Client()
 
     def test_about_pages_accessible_by_name(self):
-        names = [
-            'about:author',
-            'about:tech'
-        ]
+        names = {
+            reverse('about:author'): HTTPStatus.OK,
+            reverse('about:tech'): HTTPStatus.OK
+        }
 
-        for name in names:
-            with self.subTest(name=name):
-                response = self.guest_client.get(reverse(name))
-                self.assertEquals(response.status_code, HTTPStatus.OK)
+        check_responses_of_given_urls(self,
+                                      self.guest_client,
+                                      check_status_code,
+                                      names)
 
     def test_about_pages_uses_correct_template(self):
         template_pages_names = {
@@ -24,7 +27,7 @@ class AboutViewsTests(TestCase):
             reverse('about:tech'): 'about/tech.html'
         }
 
-        for url, template in template_pages_names.items():
-            with self.subTest(url=url, template=template):
-                response = self.guest_client.get(url)
-                self.assertTemplateUsed(response, template)
+        check_responses_of_given_urls(self,
+                                      self.guest_client,
+                                      check_template,
+                                      template_pages_names)

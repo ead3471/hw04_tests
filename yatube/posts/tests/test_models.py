@@ -32,3 +32,5 @@ class GroupModelTest(TestCase):
 
     def test_model_have_correct_object_name(self):
         self.assertEqual(GroupModelTest.group.__str__(), "Тестовая группа")
+
+

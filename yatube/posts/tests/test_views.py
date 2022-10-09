@@ -5,9 +5,11 @@ from django.contrib.auth import get_user_model
 from ..models import Post, Group
 from django.urls import reverse
 from django import forms
-from .utils import (check_responses_of_given_urls,
-                    check_template,
-                    check_posts_fields)
+from test_utils.utils import (check_responses_of_given_urls,
+                              check_template,
+                              check_form_fields_type)
+from .utils import check_posts_fields
+
 User = get_user_model()
 
 
@@ -108,14 +110,9 @@ class PostsPagesTests(TestCase):
         for url in test_urls:
             with self.subTest(url=url):
                 response = PostsPagesTests.auth_client.get(url)
-                for field_name, expected_field_type in form_fields.items():
-                    with self.subTest(field_name=field_name,
-                                      expected_field_type=expected_field_type):
-                        field = response.context.get("form").fields.get(
-                            field_name)
-                        self.assertIsInstance(
-                            field,
-                            expected_field_type)
+                check_form_fields_type(self,
+                                       response.context['form'],
+                                       form_fields)
 
     def test_post_detail_context(self):
         response = PostsPagesTests.auth_client.get(

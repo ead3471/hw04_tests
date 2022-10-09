@@ -41,6 +41,3 @@ class UsersFormsTest(TestCase):
         )
 
         self.assertTrue(new_user.exists())
-
-        self.assertTrue('rereref')
-        self.assertIn('42', 'ddsfsdf42sasda')

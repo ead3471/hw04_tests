@@ -1,6 +1,10 @@
 from django.test import Client, TestCase
 from django.contrib.auth import get_user_model
 from http import HTTPStatus
+from test_utils.utils import (check_responses_of_given_urls,
+                              check_status_code,
+                              check_redirect,
+                              check_template)
 
 User = get_user_model()
 
@@ -29,22 +33,24 @@ class UsersUrlsTest(TestCase):
             '/auth/reset/done/': HTTPStatus.OK
         }
 
-        for url, expected_status in urls_for_check.items():
-            with self.subTest(url=url, expected_status=expected_status):
-                response = UsersUrlsTest.guest_client.get(url)
-                self.assertEquals(response.status_code, expected_status)
+        check_responses_of_given_urls(self,
+                                      UsersUrlsTest.guest_client,
+                                      check_status_code,
+                                      urls_for_check)
 
     def test_unauth_user_redirect(self):
         urls_for_check = {
-            '/auth/password_change/': '/auth/login/',
-            '/auth/password_change/done/': '/auth/login/',
+            '/auth/password_change/':
+                '/auth/login/?next=/auth/password_change/',
+
+            '/auth/password_change/done/':
+                '/auth/login/?next=/auth/password_change/done/',
         }
 
-        for url, redirect_url in urls_for_check.items():
-            with self.subTest(url=url, redirect_url=redirect_url):
-                full_redirect_url = redirect_url + "?next=" + url
-                responce = self.guest_client.get(url, follow=True)
-                self.assertRedirects(responce, full_redirect_url)
+        check_responses_of_given_urls(self,
+                                      UsersUrlsTest.guest_client,
+                                      check_redirect,
+                                      urls_for_check)
 
     def test_auth_user_access(self):
         urls_for_check = {
@@ -58,10 +64,10 @@ class UsersUrlsTest(TestCase):
             '/auth/logout/': HTTPStatus.OK,
         }
 
-        for url, expected_status in urls_for_check.items():
-            with self.subTest(url=url, expected_status=expected_status):
-                response = self.auth_client.get(url)
-                self.assertEquals(response.status_code, expected_status)
+        check_responses_of_given_urls(self,
+                                      self.auth_client,
+                                      check_status_code,
+                                      urls_for_check)
 
     def test_templates(self):
         urls_for_check = {
@@ -75,7 +81,7 @@ class UsersUrlsTest(TestCase):
             '/auth/logout/': 'users/logged_out.html',
         }
 
-        for url, template in urls_for_check.items():
-            with self.subTest(url=url, template=template):
-                response = self.auth_client.get(url)
-                self.assertTemplateUsed(response, template)
+        check_responses_of_given_urls(self,
+                                      self.auth_client,
+                                      check_template,
+                                      urls_for_check)

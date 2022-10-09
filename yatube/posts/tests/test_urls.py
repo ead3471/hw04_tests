@@ -2,10 +2,10 @@ from django.test import Client, TestCase
 from django.contrib.auth import get_user_model
 from ..models import Post, Group
 from http import HTTPStatus
-from .utils import (check_responses_of_given_urls,
-                    check_status_code,
-                    check_template,
-                    check_redirect)
+from test_utils.utils import (check_responses_of_given_urls,
+                              check_status_code,
+                              check_template,
+                              check_redirect)
 
 
 User = get_user_model()
