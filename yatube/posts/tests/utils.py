@@ -31,6 +31,9 @@ def check_redirect(test_case: TestCase, response, expected_value):
 def check_posts_fields(test_case: TestCase,
                        posts_from_page: Iterable,
                        expected_posts: Iterable):
+    """Sequentely compares all the post objects from
+    posts_from_page with posts from expected_posts"""
+
     posts_attributes = [
         "text",
         "group",

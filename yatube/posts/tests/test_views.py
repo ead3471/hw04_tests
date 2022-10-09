@@ -70,19 +70,19 @@ class PostsPagesTests(TestCase):
             reverse('posts:index'): 'posts/index.html',
 
             reverse('posts:group_list',
-                    kwargs={"slug": PostsPagesTests.test_group.slug}):
+                    args=(PostsPagesTests.test_group.slug,)):
                         'posts/group_list.html',
 
             reverse('posts:profile',
-                    kwargs={"username": PostsPagesTests.auth_user.username}):
+                    args=(PostsPagesTests.auth_user.username,)):
                         'posts/profile.html',
 
             reverse('posts:post_detail',
-                    kwargs={"post_id": PostsPagesTests.test_post.id}):
+                    args=(PostsPagesTests.test_post.id,)):
                         'posts/post_detail.html',
 
             reverse('posts:post_edit',
-                    kwargs={"post_id": PostsPagesTests.test_post.id}):
+                    args=(PostsPagesTests.test_post.id,)):
                         'posts/create_post.html',
 
             reverse('posts:post_create'): 'posts/create_post.html',
@@ -97,7 +97,7 @@ class PostsPagesTests(TestCase):
         test_urls = [
             reverse("posts:post_create"),
             reverse("posts:post_edit",
-                    kwargs={"post_id": PostsPagesTests.test_post.id})
+                    args=(PostsPagesTests.test_post.id,))
         ]
 
         form_fields = {
@@ -121,7 +121,7 @@ class PostsPagesTests(TestCase):
         response = PostsPagesTests.auth_client.get(
             reverse(
                 "posts:post_detail",
-                kwargs={"post_id": PostsPagesTests.test_post.id}))
+                args=(PostsPagesTests.test_post.id,)))
 
         check_posts_fields(self,
                            [response.context.get("post")],
@@ -142,7 +142,7 @@ class PostsPagesTests(TestCase):
                 response = PostsPagesTests.auth_client.get(
                     reverse(
                         "posts:profile",
-                        kwargs={"username": author.username}))
+                        args=(author.username,)))
                 posts_from_page = response.context.get("page_obj")
                 posts_from_database = (Post
                                        .objects
@@ -157,7 +157,7 @@ class PostsPagesTests(TestCase):
                 response = PostsPagesTests.auth_client.get(
                     reverse(
                         "posts:group_list",
-                        kwargs={"slug": group.slug}))
+                        args=(group.slug,)))
                 posts_from_page = response.context.get("page_obj")
                 posts_from_database = (Post
                                        .objects
@@ -182,9 +182,9 @@ class PostsPagesTests(TestCase):
         urls_to_check_with_new_post = [
             reverse('posts:index'),
             reverse('posts:group_list',
-                    kwargs={"slug": PostsPagesTests.test_group.slug}),
+                    args=(PostsPagesTests.test_group.slug,)),
             reverse('posts:profile',
-                    kwargs={"username": PostsPagesTests.auth_user.username})
+                    args=(PostsPagesTests.auth_user.username,))
         ]
         for url in urls_to_check_with_new_post:
             with self.subTest(url=url):
@@ -200,12 +200,12 @@ class PostsPagesTests(TestCase):
         # 2 Checking pages that should not contain new_post
         profile_urls_to_check = ([
                                  reverse('posts:profile',
-                                         kwargs={'username': user.username})
+                                         args=(user.username,))
                                  for user in PostsPagesTests.tests_authors])
-        
+
         group_urls_to_check = ([
                                reverse('posts:group_list',
-                                       kwargs={'slug': group.slug})
+                                       args=(group.slug,))
                                for group in PostsPagesTests.tests_groups])
 
         all_urls_to_check = profile_urls_to_check + group_urls_to_check
@@ -217,4 +217,3 @@ class PostsPagesTests(TestCase):
                 wrong_posts_count = sum(
                     post.id == new_post_with_group.id for post in page_posts)
                 self.assertEquals(wrong_posts_count, 0)
-
