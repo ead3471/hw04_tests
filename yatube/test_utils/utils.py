@@ -1,4 +1,4 @@
-from django.forms import Field, ModelForm
+from django.forms import ModelForm
 from django.test import TestCase, Client
 from typing import Callable, Dict
 
