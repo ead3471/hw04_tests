@@ -1,4 +1,3 @@
-from typing import List
 from django.test import TestCase, Client
 from django.core.paginator import Page
 from django.contrib.auth import get_user_model
