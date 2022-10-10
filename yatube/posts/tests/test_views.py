@@ -8,7 +8,8 @@ from django import forms
 from test_utils.utils import (check_responses_of_given_urls,
                               check_template,
                               check_form_fields_type)
-from .utils import check_posts_fields
+from .utils import (check_posts_fields,
+                    check_page_contains_post_on_first_position)
 
 User = get_user_model()
 
@@ -162,12 +163,6 @@ class PostsPagesTests(TestCase):
                                        [:POSTS_PER_PAGE])
                 check_posts_fields(self, posts_from_page, posts_from_database)
 
-    def check_page_contains_post_on_first_position(self,
-                                                   posts: List,
-                                                   expected_post: Post):
-        self.assertGreater(len(posts), 0)
-        self.assertEquals(posts[0].id, expected_post.id)
-
     def test_new_post_creation(self):
         new_post_with_group = Post.objects.create(
             text="new_post",
@@ -189,10 +184,9 @@ class PostsPagesTests(TestCase):
                                    auth_client
                                    .get(url)
                                    .context['page_obj']).object_list
-                self.assertGreater(len(posts_from_page), 0)
-                self.assertEquals(
-                    posts_from_page[0].id,
-                    new_post_with_group.id)
+                check_page_contains_post_on_first_position(self,
+                                                           posts_from_page,
+                                                           new_post_with_group)
 
         # 2 Checking pages that should not contain new_post
         profile_urls_to_check = ([

@@ -1,5 +1,12 @@
 from django.test import TestCase
 from typing import Iterable
+from django.utils.crypto import get_random_string
+from django.db.models import Max
+from ..models import Group, Post
+from django.contrib.auth import get_user_model
+from django.core.paginator import Page
+
+User = get_user_model()
 
 
 def check_posts_fields(test_case: TestCase,
@@ -24,3 +31,28 @@ def check_posts_fields(test_case: TestCase,
                     test_case.assertEquals(
                         post_from_page.__getattribute__(attribute),
                         expected_post.__getattribute__(attribute))
+
+
+def check_page_contains_post_on_first_position(test_case: TestCase,
+                                               posts: Page,
+                                               expected_post: Post):
+    test_case.assertGreater(len(posts), 0)
+    test_case.assertEquals(posts[0].id, expected_post.id)
+
+
+def get_not_used_group_slug() -> str:
+    random_slug = get_random_string(7)
+    while random_slug in Group.objects.values_list("slug"):
+        random_slug = get_random_string(7)
+    return random_slug
+
+
+def get_not_used_post_id() -> int:
+    return Post.objects.all().aggregate(Max("id"))["id__max"] + 1
+
+
+def get_not_used_username() -> str:
+    random_username = get_random_string(7)
+    while random_username in User.objects.values_list("username"):
+        random_username = get_random_string(7)
+    return random_username

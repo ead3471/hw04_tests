@@ -17,13 +17,19 @@ class PostTestForms(TestCase):
             title="new_group_title"
         )
 
-        cls.auth_user = User.objects.create_user("auth_user")
-        cls.auth_client = Client()
-        cls.auth_client.force_login(cls.auth_user)
+        cls.post_author = User.objects.create_user("post_author")
+        cls.post_author_client = Client()
+        cls.post_author_client.force_login(cls.post_author)
+
+        cls.not_post_author = User.objects.create_user('not_post_author')
+        cls.not_post_author_client = Client()
+        cls.not_post_author_client.force_login(cls.not_post_author)
+
+        cls.guest_client = Client()
 
         cls.new_post = Post.objects.create(
             text="New post",
-            author=cls.auth_user
+            author=cls.post_author
         )
 
     def test_post_create_with_and_without_group(self):
@@ -41,7 +47,7 @@ class PostTestForms(TestCase):
             posts_count = Post.objects.count()
 
             response = (PostTestForms
-                        .auth_client
+                        .post_author_client
                         .post(reverse('posts:post_create'),
                               data=form,
                               follow=True))
@@ -49,14 +55,14 @@ class PostTestForms(TestCase):
             self.assertRedirects(response,
                                  reverse(
                                      'posts:profile',
-                                     args=(PostTestForms.auth_user.username,)))
+                                     args=(PostTestForms.post_author.username,)))
 
             self.assertEquals(posts_count + 1, Post.objects.count())
 
             created_objects = (Post
                                .objects
                                .filter(text=form["text"],
-                                       author=PostTestForms.auth_user)
+                                       author=PostTestForms.post_author)
                                )
 
             if "group" in form.keys():
@@ -64,13 +70,37 @@ class PostTestForms(TestCase):
 
             self.assertTrue(created_objects.exists())
 
-    def test_post_edit(self):
+    def test_post_create_by_unauth_client(self):
+        posts_count = Post.objects.count()
+
+        form = {"text": "Post created by anauth user",
+                "group": PostTestForms.new_group.id}
+
+        response = (PostTestForms
+                    .guest_client
+                    .post(reverse('posts:post_create'),
+                          data=form,
+                          follow=True))
+
+        self.assertRedirects(response, '/auth/login/?next=/create/')
+
+        self.assertEquals(posts_count, Post.objects.count())
+
+        created_objects = (Post
+                           .objects
+                           .filter(text=form["text"],
+                                   group=form["group"])
+                           )
+
+        self.assertFalse(created_objects.exists())
+
+    def test_post_edit_by_author(self):
         edit_post_data = {
             "text": "new_text",
             "group": PostTestForms.new_group.id,
         }
         response = (PostTestForms
-                    .auth_client
+                    .post_author_client
                     .post(
                         reverse('posts:post_edit',
                                 args=(PostTestForms.new_post.id,)),
@@ -88,3 +118,51 @@ class PostTestForms(TestCase):
             group=PostTestForms.new_group.id,
         )
         self.assertTrue(edited_post.exists())
+
+    def test_post_edit_by_guest(self):
+        edit_post_data = {
+            "text": "new_text",
+            "group": PostTestForms.new_group.id,
+        }
+        response = (PostTestForms
+                    .guest_client
+                    .post(
+                        reverse('posts:post_edit',
+                                args=(PostTestForms.new_post.id,)),
+                        data=edit_post_data,
+                        follow=True))
+
+        self.assertRedirects(
+            response,
+            f'/auth/login/?next=/posts/{PostTestForms.new_post.id}/edit/')
+
+        edited_post = Post.objects.filter(
+            id=PostTestForms.new_post.id,
+            text=edit_post_data["text"],
+            group=PostTestForms.new_group.id,
+        )
+        self.assertFalse(edited_post.exists())
+
+    def test_post_edit_by_not_author(self):
+        edit_post_data = {
+            "text": "new_text",
+            "group": PostTestForms.new_group.id,
+        }
+        response = (PostTestForms
+                    .not_post_author_client
+                    .post(
+                        reverse('posts:post_edit',
+                                args=(PostTestForms.new_post.id,)),
+                        data=edit_post_data,
+                        follow=True))
+
+        self.assertRedirects(
+            response,
+            f'/posts/{PostTestForms.new_post.id}/')
+
+        edited_post = Post.objects.filter(
+            id=PostTestForms.new_post.id,
+            text=edit_post_data["text"],
+            group=PostTestForms.new_group.id,
+        )
+        self.assertFalse(edited_post.exists())

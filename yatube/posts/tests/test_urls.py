@@ -6,7 +6,9 @@ from test_utils.utils import (check_responses_of_given_urls,
                               check_status_code,
                               check_template,
                               check_redirect)
-
+from .utils import (get_not_used_group_slug,
+                    get_not_used_username,
+                    get_not_used_post_id)
 
 User = get_user_model()
 
@@ -57,16 +59,24 @@ class PostUrlsTests(TestCase):
 
             f"/group/{PostUrlsTests.test_group.slug}/": HTTPStatus.OK,
 
+            f"/group/{get_not_used_group_slug()}/": HTTPStatus.NOT_FOUND,
+
             (f"/profile/{PostUrlsTests.post_author_1.username}/"):
                 HTTPStatus.OK,
 
+            (f"/profile/{get_not_used_username()}/"):
+                HTTPStatus.NOT_FOUND,
+
             f"/posts/{PostUrlsTests.author_1_post.id}/": HTTPStatus.OK,
+
+            f"/posts/{get_not_used_post_id()}/": HTTPStatus.NOT_FOUND,
 
             f"/posts/{PostUrlsTests.author_1_post.id}/edit/": HTTPStatus.FOUND,
 
             "/create/": HTTPStatus.FOUND,
 
-            "/unexisting_page/": HTTPStatus.NOT_FOUND
+            "/unexisting_page/": HTTPStatus.NOT_FOUND,
+
         }
 
         check_responses_of_given_urls(self,
@@ -84,11 +94,18 @@ class PostUrlsTests(TestCase):
 
             f"/group/{PostUrlsTests.test_group.slug}/": HTTPStatus.OK,
 
+            f"/group/{get_not_used_group_slug()}/": HTTPStatus.NOT_FOUND,
+
             f"/profile/{PostUrlsTests.post_author_1.username}/":
                 HTTPStatus.OK,
 
+            (f"/profile/{get_not_used_username()}/"):
+                HTTPStatus.NOT_FOUND,
+
             f"/posts/{PostUrlsTests.author_1_post.id}/":
                 HTTPStatus.OK,
+
+            f"/posts/{get_not_used_post_id()}/": HTTPStatus.NOT_FOUND,
 
             "/create/":
                 HTTPStatus.OK,
