@@ -37,6 +37,7 @@
               {% if action_url %}
                 action="{% url action_url %}"
               {% endif %}
+              enctype="multipart/form-data"
             >
             {% csrf_token %}
 

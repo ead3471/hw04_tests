@@ -1,4 +1,7 @@
-from django.test import TestCase, Client
+import shutil
+import tempfile
+from django.conf import settings
+from django.test import TestCase, Client, override_settings
 from django.core.paginator import Page
 from django.contrib.auth import get_user_model
 from ..models import Post, Group
@@ -8,11 +11,15 @@ from test_utils.utils import (check_responses_of_given_urls,
                               check_template,
                               check_form_fields_type)
 from .utils import (check_posts_fields,
-                    check_page_contains_post_on_first_position)
+                    check_page_contains_post_on_first_position,
+                    create_image)
 
 User = get_user_model()
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostsPagesTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -64,8 +71,14 @@ class PostsPagesTests(TestCase):
                         text=(f"Athor {author.username} post {post_number}",
                               f"in group {group.slug}"),
                         group=group,
+                        image=create_image()
                     )
                     cls.tests_posts.append(new_post)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def test_namespace_and_templates(self):
         templates_pages_names = {
@@ -104,7 +117,8 @@ class PostsPagesTests(TestCase):
 
         form_fields = {
             "text": forms.CharField,
-            "group": forms.ChoiceField
+            "group": forms.ChoiceField,
+            "image": forms.ImageField
         }
 
         for url in test_urls:
@@ -166,7 +180,8 @@ class PostsPagesTests(TestCase):
         new_post_with_group = Post.objects.create(
             text="new_post",
             group=PostsPagesTests.test_group,
-            author=PostsPagesTests.auth_user
+            author=PostsPagesTests.auth_user,
+            image=create_image()
         )
 
         # 1 Checking pages that should contain new_post

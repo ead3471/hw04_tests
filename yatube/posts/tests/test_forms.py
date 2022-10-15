@@ -129,7 +129,7 @@ class PostTestForms(TestCase):
                     .guest_client
                     .post(
                         reverse('posts:post_edit',
-                                args=(PostTestForms.new_post.id,)),
+                                  args=(PostTestForms.new_post.id,)),
                         data=edit_post_data,
                         follow=True))
 
