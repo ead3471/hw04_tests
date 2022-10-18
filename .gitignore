@@ -148,3 +148,5 @@ dmypy.json
 
 yatube/sent_emails/*.log
 media/
+
+yatube/tmp*
