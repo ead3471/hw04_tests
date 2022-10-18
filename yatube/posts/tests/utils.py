@@ -1,11 +1,12 @@
 from django.test import TestCase
-from typing import Iterable
+from typing import Iterable, List
 from django.utils.crypto import get_random_string
 from django.db.models import Max
 from ..models import Group, Post
 from django.contrib.auth import get_user_model
 from django.core.paginator import Page
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import models
 
 User = get_user_model()
 
@@ -27,29 +28,43 @@ def create_image(image_name=None) -> SimpleUploadedFile:
     return result_image
 
 
+def compare_model_objects_list(test_case: TestCase,
+                               testing_objects: Iterable[models.Model],
+                               expected_objects: Iterable[models.Model],
+                               model_attributes: List[str] = None):
+    """Sequentely compares all given attributes from
+    testing_objects list with attributes from expected_objects list.
+    If model_attributes is None method will checkk all attributes"""
+
+    test_case.assertEquals(len(testing_objects), len(expected_objects))
+    if len(testing_objects) == 0:
+        return
+
+    if not model_attributes:
+        model_class = testing_objects[0].__class__
+        model_attributes = [
+            field.name for field in model_class._meta.get_fields()]
+
+    for testing_object, expected_object in zip(testing_objects,
+                                               expected_objects):
+        with test_case.subTest(testing_object=testing_object,
+                               expected_object=expected_object):
+            for model_attribute in model_attributes:
+                with test_case.subTest(model_attrilbute=model_attribute):
+                    test_case.assertEquals(
+                        testing_object.__getattribute__(model_attribute),
+                        expected_object.__getattribute__(model_attribute))
+
+
 def check_posts_fields(test_case: TestCase,
-                       posts_from_page: Iterable,
-                       expected_posts: Iterable):
+                       posts_from_page: Iterable[Post],
+                       expected_posts: Iterable[Post]):
     """Sequentely compares all the post objects from
     posts_from_page with posts from expected_posts"""
 
-    posts_attributes = [
-        "text",
-        "group",
-        "pub_date",
-        "author",
-        "image"
-    ]
-    test_case.assertEquals(len(posts_from_page), len(expected_posts))
-    for post_from_page, expected_post in zip(posts_from_page,
-                                             expected_posts):
-        with test_case.subTest(post_from_page=post_from_page,
-                               expected_post=expected_post):
-            for attribute in posts_attributes:
-                with test_case.subTest(attribute=attribute):
-                    test_case.assertEquals(
-                        post_from_page.__getattribute__(attribute),
-                        expected_post.__getattribute__(attribute))
+    compare_model_objects_list(test_case,
+                               testing_objects=posts_from_page,
+                               expected_objects=expected_posts)
 
 
 def check_page_contains_post_on_first_position(test_case: TestCase,

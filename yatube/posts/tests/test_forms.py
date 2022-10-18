@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
-from ..models import Group, Post
+from ..models import Group, Post, Comment
 from django.urls import reverse
 
 User = get_user_model()
@@ -129,7 +129,7 @@ class PostTestForms(TestCase):
                     .guest_client
                     .post(
                         reverse('posts:post_edit',
-                                  args=(PostTestForms.new_post.id,)),
+                                args=(PostTestForms.new_post.id,)),
                         data=edit_post_data,
                         follow=True))
 
@@ -167,3 +167,48 @@ class PostTestForms(TestCase):
             group=PostTestForms.new_group.id,
         )
         self.assertFalse(edited_post.exists())
+
+    def test_comment_add_by_auth_user(self):
+        form = {"text": "New comment from auth user"}
+        comments_count = Comment.objects.count()
+
+        response = PostTestForms.post_author_client.post(
+            reverse('posts:add_comment', args=(PostTestForms.new_post.id,)),
+            data=form,
+            follow=True)
+
+        # 1.Check comment is created
+        self.assertEquals(comments_count + 1, Comment.objects.count())
+
+        # 1. Check redirect to post detail page
+        self.assertRedirects(
+            response,
+            reverse(
+                'posts:post_detail',
+                args=(PostTestForms.new_post.id,)))
+
+        # 2. Check Comment is created with right values
+        created_comments = Comment.objects.filter(
+            post=PostTestForms.new_post,
+            author=PostTestForms.post_author,
+            text=form["text"]
+        )
+
+        self.assertEquals(len(created_comments), 1)
+
+    def test_comment_add_by_unauth_user(self):
+        form = {"text": "New comment from auth user"}
+        comments_count = Comment.objects.count()
+
+        response = PostTestForms.guest_client.post(
+            reverse('posts:add_comment', args=(PostTestForms.new_post.id,)),
+            data=form,
+            follow=True)
+
+        # 1.Check comment is not created
+        self.assertEquals(comments_count, Comment.objects.count())
+
+        # 1. Check redirect to login page
+        self.assertRedirects(
+            response,
+            '/auth/login/?next=/posts/1/comment/')

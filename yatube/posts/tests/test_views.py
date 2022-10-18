@@ -4,7 +4,9 @@ from django.conf import settings
 from django.test import TestCase, Client, override_settings
 from django.core.paginator import Page
 from django.contrib.auth import get_user_model
-from ..models import Post, Group
+
+from ..forms import CommentForm
+from ..models import Post, Group, Comment
 from django.urls import reverse
 from django import forms
 from test_utils.utils import (check_responses_of_given_urls,
@@ -12,7 +14,8 @@ from test_utils.utils import (check_responses_of_given_urls,
                               check_form_fields_type)
 from .utils import (check_posts_fields,
                     check_page_contains_post_on_first_position,
-                    create_image)
+                    create_image,
+                    compare_model_objects_list)
 
 User = get_user_model()
 
@@ -24,6 +27,8 @@ class PostsPagesTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        cls.guest_client = Client()
+
         cls.auth_user = User.objects.create_user("auth_user")
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.auth_user)
@@ -60,20 +65,30 @@ class PostsPagesTests(TestCase):
 
         group_number = 0
 
-        "Создание от каждого автора постов в группах в соответствии"
-        "с posts_in_group_count"
+        # Создание от каждого автора постов в группах в соответствии"
+        # с posts_in_group_count"
         for group in cls.tests_groups:
             posts_in_group = posts_in_groups_count.pop()
             for author in cls.tests_authors:
                 for post_number in range(posts_in_group):
                     new_post = Post.objects.create(
                         author=author,
-                        text=(f"Athor {author.username} post {post_number}",
+                        text=(f"Athor {author.username} post {post_number}"
                               f"in group {group.slug}"),
                         group=group,
                         image=create_image()
                     )
                     cls.tests_posts.append(new_post)
+
+        for post in Post.objects.all():
+            for comment_number in range(5):
+                post_text = (f"Comment {comment_number} from "
+                             f"{cls.auth_user.username} to post {post.id}")
+                Comment.objects.create(
+                    text=post_text,
+                    author=cls.auth_user,
+                    post=post
+                )
 
     @classmethod
     def tearDownClass(cls):
@@ -128,7 +143,8 @@ class PostsPagesTests(TestCase):
                                        response.context['form'],
                                        form_fields)
 
-    def test_post_detail_context(self):
+    def test_post_detail_context_for_auth_client(self):
+        # Check post content
         response = PostsPagesTests.auth_client.get(
             reverse(
                 "posts:post_detail",
@@ -137,6 +153,30 @@ class PostsPagesTests(TestCase):
         check_posts_fields(self,
                            [response.context.get("post")],
                            [PostsPagesTests.test_post])
+
+        # Check comment form
+        self.assertIsInstance(response.context["form"], CommentForm)
+
+        comment_form_fields_types = {
+            "text": forms.CharField
+        }
+        check_form_fields_type(self,
+                               response.context["form"],
+                               comment_form_fields_types)
+
+    def test_post_detail_context_for_unauth_client(self):
+        # Check post content
+        response = PostsPagesTests.guest_client.get(
+            reverse(
+                "posts:post_detail",
+                args=(PostsPagesTests.test_post.id,)))
+
+        check_posts_fields(self,
+                           [response.context.get("post")],
+                           [PostsPagesTests.test_post])
+
+        # Check page dont contain comment form
+        self.assertNotIn("form", response.context)
 
     def test_index_page_context_and_paginator(self):
         POSTS_PER_PAGE = 10
@@ -222,3 +262,18 @@ class PostsPagesTests(TestCase):
                 wrong_posts_count = sum(
                     post.id == new_post_with_group.id for post in page_posts)
                 self.assertEquals(wrong_posts_count, 0)
+
+    def test_profile_page_contains_all_comments(self):
+        for post in Post.objects.all():
+            with self.subTest(post=post):
+                response = (PostsPagesTests.
+                            auth_client.
+                            get(
+                                reverse('posts:post_detail',
+                                        args=(post.pk,))))
+
+                comments = response.context['comments']
+                last_comment_in_base = Comment.objects.filter(post=post).all()
+                compare_model_objects_list(self,
+                                           comments,
+                                           last_comment_in_base)
