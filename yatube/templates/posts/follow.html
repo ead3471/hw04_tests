@@ -1,13 +1,12 @@
 {% extends "base.html" %}
 {% load thumbnail %}
 {% block title %}
-  Последние обновления на сайте
+  {{ title }}
 {% endblock title %}
 {% block content %}
   {% include "posts/includes/switcher.html" %}
   <div class="container">
-    <h1>Последние обновления на сайте</h1>
-    
+    <h1>Последние обновления в подписках</h1>
       {% for post in page_obj %}
         <article>
           <ul>

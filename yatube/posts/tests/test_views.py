@@ -4,9 +4,11 @@ from django.conf import settings
 from django.test import TestCase, Client, override_settings
 from django.core.paginator import Page
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+
 
 from ..forms import CommentForm
-from ..models import Post, Group, Comment
+from ..models import Post, Group, Comment, Follow
 from django.urls import reverse
 from django import forms
 from test_utils.utils import (check_responses_of_given_urls,
@@ -61,7 +63,7 @@ class PostsPagesTests(TestCase):
             )
 
         cls.tests_posts = []
-        posts_in_groups_count = [3, 12, 0]
+        posts_in_groups_count = [1, 12, 0]
 
         group_number = 0
 
@@ -90,6 +92,10 @@ class PostsPagesTests(TestCase):
                     post=post
                 )
 
+    def setUp(self) -> None:
+        super().setUp()
+        cache.clear()
+
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
@@ -98,6 +104,8 @@ class PostsPagesTests(TestCase):
     def test_namespace_and_templates(self):
         templates_pages_names = {
             reverse('posts:index'): 'posts/index.html',
+
+            reverse('posts:follow_index'): 'posts/follow.html',
 
             reverse('posts:group_list',
                     args=(PostsPagesTests.test_group.slug,)):
@@ -180,6 +188,7 @@ class PostsPagesTests(TestCase):
 
     def test_index_page_context_and_paginator(self):
         POSTS_PER_PAGE = 10
+        cache.clear()
         response = PostsPagesTests.auth_client.get(reverse("posts:index"))
         posts_from_page = response.context.get("page_obj")
         database_posts = Post.objects.all()[:POSTS_PER_PAGE]
@@ -277,3 +286,84 @@ class PostsPagesTests(TestCase):
                 compare_model_objects_list(self,
                                            comments,
                                            last_comment_in_base)
+
+    def test_index_page_cache(self):
+        def get_index_page():
+            return (PostsPagesTests.
+                    auth_client.
+                    get(reverse('posts:index')))
+
+        new_post = Post.objects.create(text='Post for cache testing',
+                                       author=PostsPagesTests.auth_user)
+
+        response_before_post_deletion = get_index_page()
+
+        Post.objects.get(id=new_post.id).delete()
+
+        response_after_post_deleiton = get_index_page()
+
+        # 1. Test cache work - content is the same
+        self.assertEquals(response_before_post_deletion.content,
+                          response_after_post_deleiton.content)
+
+        # 2. Drop cache
+        cache.clear()
+
+        response_after_cache_clear = get_index_page()
+
+        # 3. Test cache is dropped
+        self.assertNotEquals(response_after_post_deleiton.content,
+                             response_after_cache_clear.content)
+
+    def test_follow_creation_and_removing_by_auth_user(self):
+        follow_author = PostsPagesTests.tests_authors[0]
+
+        self.assertFalse(Follow.
+                         objects.
+                         filter(user=PostsPagesTests.auth_user).
+                         filter(author=follow_author).exists())
+
+        (PostsPagesTests.
+            auth_client.get(reverse('posts:profile_follow',
+                                    args=(follow_author.username,))))
+
+        self.assertTrue(Follow.
+                        objects.
+                        filter(user=PostsPagesTests.auth_user).
+                        filter(author=follow_author).exists())
+
+        (PostsPagesTests.
+            auth_client.get(reverse('posts:profile_unfollow',
+                                    args=(follow_author.username,))))
+        self.assertFalse(Follow.
+                         objects.
+                         filter(user=PostsPagesTests.auth_user).
+                         filter(author=follow_author).exists())
+
+    def test_post_shows_to_followers(self):
+        post_author = PostsPagesTests.tests_authors[0]
+        follower = PostsPagesTests.auth_user
+
+        Follow.objects.create(user=follower,
+                              author=post_author)
+
+        new_post = Post.objects.create(author=post_author,
+                                       text='follow test')
+
+        follower_page = (PostsPagesTests.
+                         auth_client.
+                         get(reverse('posts:follow_index')).
+                         context['page_obj'])
+
+        check_page_contains_post_on_first_position(self,
+                                                   follower_page,
+                                                   new_post)
+
+        not_follower_client = Client()
+        not_follower_client.force_login(post_author)
+
+        not_follower_page = (not_follower_client.
+                             get(reverse('posts:follow_index')).
+                             context['page_obj'])
+
+        self.assertNotIn(new_post, not_follower_page)

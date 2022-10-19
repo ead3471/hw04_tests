@@ -15,5 +15,25 @@ urlpatterns = [
     # Редактирование записи
     path('posts/<int:post_id>/edit/', views.post_edit, name='post_edit'),
     # Добавление поста
-    path('posts/<int:post_id>/comment/', views.add_comment, name='add_comment')
+    path(
+        'posts/<int:post_id>/comment/',
+        views.add_comment,
+        name='add_comment'),
+    # Страница постов из подписок
+    path('follow/',
+         views.follow_index,
+         name='follow_index'),
+    # Зарегестрировать подписку на автора
+    path(
+        'profile/<str:username>/follow/',
+        views.profile_follow,
+        name='profile_follow'
+    ),
+    # Отписаться от автора
+    path(
+        'profile/<str:username>/unfollow/',
+        views.profile_unfollow,
+        name='profile_unfollow'
+    ),
+
 ]

@@ -9,6 +9,7 @@ from test_utils.utils import (check_responses_of_given_urls,
 from .utils import (get_not_used_group_slug,
                     get_not_used_username,
                     get_not_used_post_id)
+from django.core.cache import cache
 
 User = get_user_model()
 
@@ -50,6 +51,7 @@ class PostUrlsTests(TestCase):
         self.post_author_2_client = Client()
         self.post_author_2_client.force_login(
             PostUrlsTests.post_author_2)
+        cache.clear()
 
     def test_unauth_user_access(self):
         """Testing pages access for guest client"""
@@ -61,10 +63,9 @@ class PostUrlsTests(TestCase):
 
             f"/group/{get_not_used_group_slug()}/": HTTPStatus.NOT_FOUND,
 
-            (f"/profile/{PostUrlsTests.post_author_1.username}/"):
-                HTTPStatus.OK,
+            f"/profile/{PostUrlsTests.post_author_1.username}/": HTTPStatus.OK,
 
-            (f"/profile/{get_not_used_username()}/"):
+            f"/profile/{get_not_used_username()}/":
                 HTTPStatus.NOT_FOUND,
 
             f"/posts/{PostUrlsTests.author_1_post.id}/": HTTPStatus.OK,
@@ -74,6 +75,14 @@ class PostUrlsTests(TestCase):
             f"/posts/{PostUrlsTests.author_1_post.id}/edit/": HTTPStatus.FOUND,
 
             "/create/": HTTPStatus.FOUND,
+
+            "/follow/": HTTPStatus.FOUND,
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/follow/":
+                HTTPStatus.FOUND,
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/unfollow/":
+                HTTPStatus.FOUND,
 
             "/unexisting_page/": HTTPStatus.NOT_FOUND,
 
@@ -116,6 +125,20 @@ class PostUrlsTests(TestCase):
             f"/posts/{PostUrlsTests.author_2_post.id}/edit/":
                 HTTPStatus.FOUND,
 
+            "/follow/": HTTPStatus.OK,
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/follow/":
+                HTTPStatus.FOUND,
+
+            f"/profile/{get_not_used_username()}/follow/":
+                HTTPStatus.NOT_FOUND,
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/unfollow/":
+                HTTPStatus.FOUND,
+
+            f"/profile/{get_not_used_username}/unfollow/":
+                HTTPStatus.NOT_FOUND,
+
             "/unexisting_page/":
                 HTTPStatus.NOT_FOUND,
         }
@@ -134,11 +157,20 @@ class PostUrlsTests(TestCase):
             f"/group/{PostUrlsTests.test_group.slug}/":
                 "posts/group_list.html",
 
+            f"/group/{get_not_used_group_slug()}/":
+                "core/404.html",
+
             f"/profile/{PostUrlsTests.post_author_1.username}/":
                 "posts/profile.html",
 
+            f"/group/{get_not_used_username()}/":
+                "core/404.html",
+
             f"/posts/{PostUrlsTests.author_1_post.id}/":
                 "posts/post_detail.html",
+
+            f"/posts/{get_not_used_post_id()}/":
+                "core/404.html",
         }
 
         check_responses_of_given_urls(self,
@@ -152,14 +184,25 @@ class PostUrlsTests(TestCase):
         urls_for_check = {
             "/": "posts/index.html",
 
+            "/follow/": "posts/follow.html",
+
             f"/group/{PostUrlsTests.test_group.slug}/":
                 "posts/group_list.html",
+
+            f"/group/{get_not_used_group_slug()}/":
+                "core/404.html",
 
             f"/profile/{PostUrlsTests.post_author_1.username}/":
                 "posts/profile.html",
 
+            f"/group/{get_not_used_username()}/":
+                "core/404.html",
+
             f"/posts/{PostUrlsTests.author_1_post.id}/":
                 "posts/post_detail.html",
+
+            f"/group/{get_not_used_post_id()}/":
+                "core/404.html",
 
             "/create/":
                 "posts/create_post.html",
@@ -180,7 +223,18 @@ class PostUrlsTests(TestCase):
             "/auth/login/?next=/create/",
 
             f"/posts/{PostUrlsTests.author_1_post.id}/edit/":
-            f"/auth/login/?next=/posts/{PostUrlsTests.author_1_post.id}/edit/"
+            f"/auth/login/?next=/posts/{PostUrlsTests.author_1_post.id}/edit/",
+
+            "/follow/":
+            "/auth/login/?next=/follow/",
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/follow/":
+                (f"/auth/login/?next=/profile/"
+                 f"{PostUrlsTests.post_author_1.username}/follow/"),
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/unfollow/":
+                (f"/auth/login/?next=/profile/"
+                 f"{PostUrlsTests.post_author_1.username}/unfollow/")
         }
 
         check_responses_of_given_urls(self,
@@ -193,7 +247,13 @@ class PostUrlsTests(TestCase):
 
         urls_for_check = {
             f"/posts/{PostUrlsTests.author_1_post.id}/edit/":
-                f"/posts/{PostUrlsTests.author_1_post.id}/"
+                f"/posts/{PostUrlsTests.author_1_post.id}/",
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/follow/":
+                f"/profile/{PostUrlsTests.post_author_1.username}/",
+
+            f"/profile/{PostUrlsTests.post_author_1.username}/unfollow/":
+                f"/profile/{PostUrlsTests.post_author_1.username}/"
         }
 
         check_responses_of_given_urls(self,

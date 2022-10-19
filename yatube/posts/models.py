@@ -72,3 +72,14 @@ class Comment(models.Model):
         ordering = ['-created']
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(User,
+                             on_delete=models.CASCADE)
+    author = models.ForeignKey(User,
+                               on_delete=models.CASCADE,
+                               related_name='following')
+
+    def __str__(self):
+        return f"{self.user.username}({self.user.id})->{self.author.username}({self.author.id})"
